@@ -25,7 +25,7 @@ public class WorldUploader {
                 File tempZip = new File(plugin.getTempFolder(), uuid + ".zip");
 
                 player.sendMessage(plugin.getMessage("compressing"));
-                // 压缩世界文件夹（只包含level.dat和region文件夹）
+                // 压缩世界文件夹（只包含level.dat、region和entities文件夹）
                 zipWorldFolder(worldFolder, tempZip, player);
 
                 // 检查文件大小
@@ -76,7 +76,7 @@ public class WorldUploader {
         try (FileOutputStream fos = new FileOutputStream(zipFile);
              java.util.zip.ZipOutputStream zos = new java.util.zip.ZipOutputStream(fos)) {
 
-            // 只添加level.dat文件和region文件夹
+            // 添加指定的文件和文件夹
             addSpecificFilesToZip(sourceFolder, sourceFolder.getName(), zos, player);
         }
     }
@@ -104,6 +104,12 @@ public class WorldUploader {
         File regionFolder = new File(folder, "region");
         if (regionFolder.exists() && regionFolder.isDirectory()) {
             addRegionFolderToZip(regionFolder, parentFolder + "/region", zos, player);
+        }
+
+        // 添加entities文件夹（如果存在）
+        File entitiesFolder = new File(folder, "entities");
+        if (entitiesFolder.exists() && entitiesFolder.isDirectory()) {
+            addEntitiesFolderToZip(entitiesFolder, parentFolder + "/entities", zos, player);
         }
     }
 
@@ -136,6 +142,37 @@ public class WorldUploader {
             }
         }
         player.sendMessage("§7已添加 " + fileCount + " 个region文件");
+    }
+
+    private static void addEntitiesFolderToZip(File entitiesFolder, String parentFolder, java.util.zip.ZipOutputStream zos, Player player) throws IOException {
+        File[] files = entitiesFolder.listFiles();
+        if (files == null) return;
+
+        player.sendMessage("§7正在添加entities文件夹...");
+        int fileCount = 0;
+
+        for (File file : files) {
+            if (file.isFile()) {
+                // 只添加.mca和.mcr文件（entities文件）
+                String fileName = file.getName();
+                if (fileName.endsWith(".mca") || fileName.endsWith(".mcr")) {
+                    String zipEntryName = parentFolder + "/" + fileName;
+                    try (FileInputStream fis = new FileInputStream(file)) {
+                        java.util.zip.ZipEntry zipEntry = new java.util.zip.ZipEntry(zipEntryName);
+                        zos.putNextEntry(zipEntry);
+
+                        byte[] buffer = new byte[1024];
+                        int length;
+                        while ((length = fis.read(buffer)) > 0) {
+                            zos.write(buffer, 0, length);
+                        }
+                        zos.closeEntry();
+                        fileCount++;
+                    }
+                }
+            }
+        }
+        player.sendMessage("§7已添加 " + fileCount + " 个entities文件");
     }
 
     private static String uploadFileToLegacyFawe(File file, String uuid, Player player) {
